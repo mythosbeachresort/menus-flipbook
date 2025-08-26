@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Menus (Flipbook Tabs)</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/css/page-flip.min.css" />
+  <style>
+    :root { --bg:#0b0c10; --fg:#f6f7f8; --muted:#9aa6b2; --accent:#57c4e5; }
+    html,body{height:100%} body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--fg)}
+    .wrap{display:flex;flex-direction:column;min-height:100%}
+    header{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+    h1{margin:0;font-size:16px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tab{border:1px solid rgba(255,255,255,.16);background:#14161a;color:var(--fg);padding:8px 12px;border-radius:999px;cursor:pointer}
+    .tab[aria-selected="true"]{border-color:var(--accent)}
+    .bar{display:flex;gap:8px;margin-left:auto}
+    .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+    main{flex:1;display:grid;place-items:center;padding:16px}
+    #flipbook{width:min(100%,1100px);height:calc(100vh - 160px);background:#0f1115;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.06);overflow:hidden}
+    .status{color:var(--muted);font-size:12px;margin-left:6px}
+    .page{background:#fff} .page img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="row">
+        <div>
+          <h1>Our Menus</h1>
+          <div class="tabs" role="tablist" id="tabs"></div>
+        </div>
+        <div class="bar">
+          <button class="tab" id="prev">◀ Prev</button>
+          <button class="tab" id="next">Next ▶</button>
+          <button class="tab" id="zoom">Zoom</button>
+          <button class="tab" id="fs">Full screen</button>
+          <a id="openPdf" class="tab" target="_blank" rel="noopener">Open PDF</a>
+        </div>
+      </div>
+      <div class="status" id="status">Loading…</div>
+    </header>
+    <main>
+      <div id="flipbook" data-pdf="/menus/dinner.pdf"></div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/page-flip/dist/js/page-flip.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+  const MENUS = [
+    { id: "dinner", label: "Dinner", pdf: "/menus/dinner.pdf" },
+    { id: "drinks", label: "Drinks", pdf: "/menus/drinks.pdf" },
+    { id: "brunch", label: "Brunch", pdf: "/menus/brunch.pdf" },
+  ];
+
+  (function(){
+    const tabs = document.getElementById('tabs');
+    const container = document.getElementById('flipbook');
+    const statusEl = document.getElementById('status');
+    const openPdfEl = document.getElementById('openPdf');
+
+    // Build tabs
+    MENUS.forEach((m, idx) => {
+      const b = document.createElement('button');
+      b.className = 'tab';
+      b.role = 'tab';
+      b.textContent = m.label;
+      b.dataset.pdf = m.pdf;
+      b.ariaSelected = idx === 0 ? 'true' : 'false';
+      b.addEventListener('click', () => switchPdf(m.pdf, b));
+      tabs.appendChild(b);
+    });
+
+    // Flipbook init
+    function measure(){ return { w: Math.max(600, Math.floor(Math.min(window.innerWidth-40, 1100)*0.9)),
+                                 h: Math.max(700, Math.floor(Math.min(window.innerHeight-200, 1100)*0.9)) }; }
+    const s = measure();
+    const pageFlip = new St.PageFlip(container, { width: s.w, height: s.h, size:'stretch', showCover:true, usePortrait:true, mobileScrollSupport:true, maxShadowOpacity:0.3 });
+    window.addEventListener('resize', ()=>{ const s = measure(); try{ pageFlip.update({ width:s.w, height:s.h }); }catch(e){} });
+
+    document.getElementById('prev').addEventListener('click', ()=>pageFlip.flipPrev());
+    document.getElementById('next').addEventListener('click', ()=>pageFlip.flipNext());
+    document.getElementById('fs').addEventListener('click', async ()=>{
+      if (!document.fullscreenElement) { await container.requestFullscreen().catch(()=>{}); } else { await document.exitFullscreen(); }
+    });
+    let zoomed=false; document.getElementById('zoom').addEventListener('click', ()=>{
+      zoomed=!zoomed; container.style.transformOrigin='center'; container.style.transform = zoomed?'scale(1.25)':'scale(1)';
+    });
+
+    const pdfjsLib = window['pdfjsLib'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    async function render(url){
+      statusEl.textContent = "Loading…";
+      openPdfEl.href = url;
+      const pdf = await pdfjsLib.getDocument(url).promise;
+      const items = [];
+      for (let i=1;i<=pdf.numPages;i++){
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1 });
+        const targetWidth = 1400;
+        const scale = targetWidth / viewport.width;
+        const v = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = Math.floor(v.width); canvas.height = Math.floor(v.height);
+        await page.render({ canvasContext: ctx, viewport: v, intent:'print' }).promise;
+        const el = document.createElement('div');
+        el.className = 'page';
+        el.innerHTML = `<img alt="Page ${i}" src="${canvas.toDataURL('image/jpeg', 0.92)}" loading="lazy">`;
+        items.push(el);
+      }
+      pageFlip.loadFromHTML(items);
+      statusEl.textContent = "";
+    }
+
+    function switchPdf(url, btn){
+      // update selected
+      [...tabs.children].forEach(b => b.setAttribute('aria-selected','false'));
+      btn.setAttribute('aria-selected','true');
+      render(url).catch(e => { console.error(e); statusEl.textContent = "Could not load PDF. Check the file path."; });
+    }
+
+    // initial
+    const start = MENUS[0].pdf;
+    switchPdf(start, tabs.children[0]);
+  })();
+  </script>
+</body>
+</html>

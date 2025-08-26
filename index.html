@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Menu Flipbook</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/css/page-flip.min.css" />
+  <style>
+    :root { --bg: #0b0c10; --fg: #f6f7f8; --muted:#9aa6b2; --accent:#57c4e5; }
+    html,body { height:100%; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; background: var(--bg); color: var(--fg); }
+    .wrap { display:flex; flex-direction:column; min-height:100%; }
+    header { padding: 12px 16px; display:flex; align-items:center; gap:12px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    header h1 { font-size: 16px; margin:0; font-weight:600; letter-spacing:.3px; }
+    .controls { display:flex; gap:8px; margin-left:auto; }
+    .btn { appearance:none; border:1px solid rgba(255,255,255,.16); background:#14161a; color:var(--fg); padding:8px 10px; border-radius:12px; cursor:pointer; font:inherit; line-height:1; }
+    .btn:hover { border-color: rgba(255,255,255,.28); }
+    .btn:active { transform: translateY(1px); }
+    .status { margin-left: 8px; color: var(--muted); font-size: 12px; }
+    .canvas-area { flex:1; min-height:0; display:grid; place-items:center; padding: 16px; }
+    #flipbook { width:min(100%, 1100px); height: calc(100vh - 90px); max-height: 1200px; background: #0f1115; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06); overflow:hidden; }
+    .page { background: #fff; }
+    .page img { display:block; width:100%; height:100%; object-fit: contain; background:#fff; }
+    footer { padding:10px 16px; color: var(--muted); font-size: 12px; text-align:center; }
+    .hidden { display:none !important; }
+    .loader { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.25); border-top-color: var(--accent); border-radius:50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Menu Flipbook</h1>
+      <span class="status" id="status"><span class="loader"></span> Loading…</span>
+      <div class="controls">
+        <button class="btn" id="prev">◀ Prev</button>
+        <button class="btn" id="next">Next ▶</button>
+        <button class="btn" id="zoom">Zoom</button>
+        <button class="btn" id="fs">Full screen</button>
+        <a id="openPdf" class="btn" target="_blank" rel="noopener">Open PDF</a>
+      </div>
+    </header>
+    <main class="canvas-area">
+      <!-- Set your PDF URL with data-pdf or via ?pdf=... query param -->
+      <div id="flipbook" data-pdf="/menus/sample.pdf"></div>
+    </main>
+    <footer>
+      If the flipbook is slow on mobile, export images from your PDF and use lower page resolutions. 
+    </footer>
+  </div>
+
+  <!-- Flipbook library -->
+  <script src="https://unpkg.com/page-flip/dist/js/page-flip.browser.min.js"></script>
+  <!-- PDF.js (no worker needed if using modern build) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+  (function(){
+    const container = document.getElementById('flipbook');
+    const statusEl = document.getElementById('status');
+    const openPdfEl = document.getElementById('openPdf');
+
+    // Resolve PDF URL: ?pdf=... overrides data-pdf
+    const urlParams = new URLSearchParams(window.location.search);
+    const pdfUrl = urlParams.get('pdf') || container.dataset.pdf;
+    if (!pdfUrl) {
+      statusEl.textContent = 'No PDF provided. Set data-pdf or ?pdf=';
+      return;
+    }
+    openPdfEl.href = pdfUrl;
+
+    // Sensible target size (flipbook expects fixed width/height). We'll adapt to viewport.
+    function measureSize(){
+      const maxW = Math.min(window.innerWidth - 40, 1100);
+      const maxH = Math.min(window.innerHeight - 140, 1200);
+      const width = Math.floor(maxW);
+      const height = Math.floor(maxH);
+      return { width, height };
+    }
+
+    // Initialize flipbook
+    const { width, height } = measureSize();
+    const pageFlip = new St.PageFlip(container, {
+      width: Math.max(600, Math.floor(width*0.9)),
+      height: Math.max(700, Math.floor(height*0.9)),
+      size: 'stretch',
+      maxShadowOpacity: 0.3,
+      showCover: true,
+      mobileScrollSupport: true,
+      usePortrait: true,
+    });
+
+    window.addEventListener('resize', () => {
+      const s = measureSize();
+      try { pageFlip.update({ width: Math.max(500, Math.floor(s.width*0.9)), height: Math.max(600, Math.floor(s.height*0.9)) }); } catch(e) {}
+    });
+
+    // Controls
+    document.getElementById('prev').addEventListener('click', () => pageFlip.flipPrev());
+    document.getElementById('next').addEventListener('click', () => pageFlip.flipNext());
+
+    const zoomBtn = document.getElementById('zoom');
+    let zoomed = false;
+    zoomBtn.addEventListener('click', () => {
+      zoomed = !zoomed;
+      container.style.transformOrigin = 'center';
+      container.style.transform = zoomed ? 'scale(1.25)' : 'scale(1)';
+    });
+
+    document.getElementById('fs').addEventListener('click', async () => {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen().catch(()=>{});
+      } else {
+        await document.exitFullscreen();
+      }
+    });
+
+    // PDF.js setup
+    const pdfjsLib = window['pdfjsLib'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    async function renderPDFtoImages(url) {
+      const pdf = await pdfjsLib.getDocument(url).promise;
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1 });
+        const targetWidth = 1400;
+        const scale = targetWidth / viewport.width;
+        const v = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: false });
+        canvas.width = Math.floor(v.width);
+        canvas.height = Math.floor(v.height);
+        await page.render({ canvasContext: ctx, viewport: v, intent: 'print' }).promise;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const el = document.createElement('div');
+        el.className = 'page';
+        el.innerHTML = `<img alt="Page ${i}" src="${dataUrl}" loading="lazy">`;
+        pages.push(el);
+      }
+      return pages;
+    }
+
+    (async function(){
+      try {
+        const pageEls = await renderPDFtoImages(pdfUrl);
+        pageFlip.loadFromHTML(pageEls);
+        statusEl.textContent = '';
+        statusEl.classList.add('hidden');
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Could not load PDF. Check the URL or CORS settings.';
+      }
+    })();
+  })();
+  </script>
+</body>
+</html>
