@@ -53,7 +53,7 @@
   <!-- Flipbook library -->
   <script src="https://unpkg.com/page-flip/dist/js/page-flip.browser.min.js"></script>
   <!-- PDF.js (no worker needed if using modern build) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script>
   (function(){
     const container = document.getElementById('flipbook');
@@ -117,7 +117,7 @@
 
     // PDF.js setup
     const pdfjsLib = window['pdfjsLib'];
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     async function renderPDFtoImages(url) {
       const pdf = await pdfjsLib.getDocument(url).promise;
