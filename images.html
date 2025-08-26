@@ -3,59 +3,132 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Apollo Menu Flipbook</title>
+  <title>Flipbook (Auto-detect + Debug)</title>
   <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/css/page-flip.min.css" />
   <style>
-    body{margin:0;background:#0b0c10;color:#f6f7f8;font-family:sans-serif}
-    header{padding:10px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+    :root{--bg:#0b0c10;--card:#0f1115;--fg:#f6f7f8;--muted:#9aa6b2}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    header{padding:10px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
     h1{font-size:16px;margin:0}
-    .btn{padding:6px 10px;border-radius:6px;background:#14161a;color:#fff;border:1px solid rgba(255,255,255,.2);cursor:pointer}
-    main{display:grid;place-items:center;height:calc(100vh - 50px)}
-    #flipbook{width:min(100%,1100px);height:calc(100vh - 80px);background:#111;border-radius:12px;overflow:hidden}
+    .btn{padding:6px 10px;border-radius:8px;background:#14161a;color:#fff;border:1px solid rgba(255,255,255,.2);cursor:pointer}
+    main{display:grid;grid-template-columns:1fr 360px;gap:12px;min-height:calc(100vh - 58px)}
+    #stage{display:grid;place-items:center;background:transparent;min-height:0}
+    #flipbook{width:min(100%,1100px);height:calc(100vh - 110px);background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.06)}
     .page img{width:100%;height:100%;object-fit:contain;background:#fff}
+    #debug{background:#0e1116;border-left:1px solid rgba(255,255,255,.08);padding:12px;overflow:auto}
+    #debug h2{font-size:14px;margin:0 0 8px;color:#cbd5e1}
+    #status{font-size:12px;color:#9aa6b2}
+    .ok{color:#86efac}
+    .fail{color:#fca5a5}
+    .row{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0}
+    .row code{color:#e5e7eb;background:#151922;padding:1px 4px;border-radius:4px}
+    .pill{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid rgba(255,255,255,.15);margin-left:6px}
   </style>
 </head>
 <body>
   <header>
-    <h1>Apollo Menu</h1>
+    <h1>Flipbook</h1>
     <button class="btn" id="prev">◀ Prev</button>
     <button class="btn" id="next">Next ▶</button>
     <button class="btn" id="zoom">Zoom</button>
     <button class="btn" id="fs">Full</button>
-    <span id="status" style="margin-left:auto;font-size:12px;color:#aaa">Loading…</span>
+    <span id="status" class="pill">Loading…</span>
   </header>
+
   <main>
-    <div id="flipbook"></div>
+    <div id="stage">
+      <div id="flipbook"></div>
+    </div>
+    <aside id="debug">
+      <h2>Debug</h2>
+      <div>Base: <code id="dbgBase"></code></div>
+      <div>Exts tried: <code id="dbgExts"></code></div>
+      <div>Pages found: <code id="dbgCount">0</code></div>
+      <hr style="border-color:rgba(255,255,255,.08)">
+      <div id="dbgLog"></div>
+    </aside>
   </main>
 
   <script src="https://unpkg.com/page-flip/dist/js/page-flip.browser.min.js"></script>
   <script>
   (async function(){
-    const base = "menus/apollo/"; // folder with your images
-    const ext = "jpg";            // change if you exported png/webp
-    const max = 50;               // max pages to try
+    // Read params. You can give just ?base=menus/apollo/
+    const qs = new URLSearchParams(location.search);
+    const baseRaw = qs.get('base') || 'menus/apollo/';
+    const base = baseRaw.endsWith('/') ? baseRaw : (baseRaw + '/');
+    const argExt = qs.get('ext'); // optional: force a single ext
+    const allowedExts = argExt ? [argExt] : ['jpg','JPG','png','PNG','webp','WEBP'];
+    const maxPages = parseInt(qs.get('max')||'100',10);
+    const tryZeroPad = qs.get('zeropad') !== 'false'; // default true (try 01, 02...)
 
-    const container=document.getElementById('flipbook');
-    const status=document.getElementById('status');
-    const s={w:800,h:1000};
-    const flip=new St.PageFlip(container,{width:s.w,height:s.h,size:'stretch',usePortrait:true,showCover:true,mobileScrollSupport:true});
-    prev.onclick=()=>flip.flipPrev();
-    next.onclick=()=>flip.flipNext();
-    let z=false;zoom.onclick=()=>{z=!z;container.style.transform=z?'scale(1.3)':'scale(1)';container.style.transformOrigin='center'};
-    fs.onclick=()=>{if(!document.fullscreenElement)container.requestFullscreen();else document.exitFullscreen();};
+    // UI refs
+    const container = document.getElementById('flipbook');
+    const statusEl = document.getElementById('status');
+    const dbgBase = document.getElementById('dbgBase');
+    const dbgExts = document.getElementById('dbgExts');
+    const dbgCount = document.getElementById('dbgCount');
+    const dbgLog = document.getElementById('dbgLog');
 
-    const pages=[];
-    for(let i=1;i<=max;i++){
-      const url=`${base}${i}.${ext}`;
-      const ok=await new Promise(r=>{const im=new Image();im.onload=()=>r(true);im.onerror=()=>r(false);im.src=url+'?v='+Date.now();});
-      if(ok){
-        const d=document.createElement('div');d.className='page';
-        d.innerHTML=`<img src=\"${url}\" alt=\"Page ${i}\">`;
-        pages.push(d);
-      }else if(pages.length){break;}
+    dbgBase.textContent = base;
+    dbgExts.textContent = allowedExts.join(', ');
+
+    // Flipbook init
+    function measure(){ return { w: Math.max(600, Math.floor(Math.min(window.innerWidth-40, 1100)*0.9)),
+                                 h: Math.max(700, Math.floor(Math.min(window.innerHeight-160, 1200)*0.9)) }; }
+    const s = measure();
+    const flip = new St.PageFlip(container, { width:s.w, height:s.h, size:'stretch', usePortrait:true, showCover:true, mobileScrollSupport:true, maxShadowOpacity:0.3 });
+    window.addEventListener('resize', ()=>{ const s=measure(); try{ flip.update({ width:s.w, height:s.h }); }catch(e){} });
+    prev.onclick = ()=>flip.flipPrev();
+    next.onclick = ()=>flip.flipNext();
+    let z=false; zoom.onclick=()=>{ z=!z; container.style.transformOrigin='center'; container.style.transform=z?'scale(1.25)':'scale(1)'; };
+    fs.onclick=()=>{ if(!document.fullscreenElement) container.requestFullscreen(); else document.exitFullscreen(); };
+
+    function log(url, ok){
+      const div = document.createElement('div');
+      div.className = 'row';
+      div.innerHTML = `<span class="${ok?'ok':'fail'}">${ok?'✓':'✗'}</span> <code>${url}</code>`;
+      dbgLog.appendChild(div);
     }
-    if(pages.length){flip.loadFromHTML(pages);status.textContent='';}
-    else{status.textContent='No images found in '+base;}
+    async function probe(url){
+      return await new Promise(r=>{
+        const im=new Image();
+        im.onload=()=>r(true);
+        im.onerror=()=>r(false);
+        im.src=url + '?v=' + Date.now();
+      });
+    }
+
+    // Try pages 1..N, testing multiple extensions and zero-padded variants
+    const pages = [];
+    for (let i=1;i<=maxPages;i++){
+      let found = false, urlFound = '';
+      const candidates = [];
+      for (const ext of allowedExts){
+        candidates.push(`${base}${i}.${ext}`);
+        if (tryZeroPad && i<100) candidates.push(`${base}${String(i).padStart(2,'0')}.${ext}`);
+      }
+      for (const u of candidates){
+        const ok = await probe(u);
+        log(u, ok);
+        if (ok){ found = true; urlFound = u; break; }
+      }
+      if (found){
+        const d = document.createElement('div');
+        d.className = 'page';
+        d.innerHTML = `<img src="${urlFound}" alt="Page ${i}">`;
+        pages.push(d);
+      } else if (pages.length) {
+        break; // stop at first gap after at least one hit
+      }
+    }
+
+    dbgCount.textContent = String(pages.length);
+    if (pages.length){
+      flip.loadFromHTML(pages);
+      statusEl.textContent = 'Ready';
+    } else {
+      statusEl.textContent = 'No images found at base (see Debug panel).';
+    }
   })();
   </script>
 </body>
