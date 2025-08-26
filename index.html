@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flipbook – PDF or Images (GitHub Pages Safe)</title>
+  <title>Flipbook – GitHub Pages Safe (No Worker)</title>
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/css/page-flip.min.css" />
   <style>
@@ -28,7 +28,7 @@
   <div class="wrap">
     <header>
       <h1>Flipbook</h1>
-      <span class="status" id="status">Tip: pass <code>?pdf=menus/dinner.pdf</code> or <code>?base=menus/dinner/&ext=jpg</code></span>
+      <span class="status" id="status">Tip: use <code>?pdf=menus/your.pdf</code> (relative path)</span>
       <div class="controls">
         <button class="btn" id="prev">◀ Prev</button>
         <button class="btn" id="next">Next ▶</button>
@@ -43,34 +43,29 @@
     <div class="help" id="help">
       <p><strong>How to use (GitHub Pages safe)</strong></p>
       <ol>
-        <li>Upload your PDFs to <code>menus/</code> (e.g., <code>menus/dinner.pdf</code>), then open:<br>
+        <li>Upload your PDF to <code>menus/</code> (e.g., <code>menus/dinner.pdf</code>), then open:<br>
           <code>index.html?pdf=menus/dinner.pdf</code>
         </li>
-        <li>Or export images named <code>1.jpg</code>, <code>2.jpg</code>, … into <code>menus/dinner/</code>, then open:<br>
-          <code>index.html?base=menus/dinner/&ext=jpg</code>
-        </li>
+        <li>If PDFs still spin in your browser, export images named <code>1.jpg</code>, <code>2.jpg</code>, … into <code>menus/dinner/</code> and switch to the image mode (ask me and I’ll paste that file too).</li>
       </ol>
-      <p><em>Important:</em> Use <strong>relative paths</strong> like <code>menus/dinner.pdf</code> (no leading slash).</p>
+      <p><em>Important:</em> Use <strong>relative paths</strong> like <code>menus/dinner.pdf</code> (no leading slash). Filenames are case-sensitive.</p>
     </div>
   </div>
 
-  <!-- Flipbook library -->
+  <!-- Flipbook lib -->
   <script src="https://unpkg.com/page-flip/dist/js/page-flip.browser.min.js"></script>
-  <!-- PDF.js pinned to a Pages-friendly version -->
+  <!-- PDF.js (stable) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script>
   (function(){
     const qs = new URLSearchParams(location.search);
-    const pdfParam = qs.get('pdf');               // e.g. menus/dinner.pdf (relative)
-    const baseParam = qs.get('base');             // e.g. menus/dinner/   (must end with /)
-    const extParam = (qs.get('ext') || 'jpg').replace('.', '');
-    const maxProbe = parseInt(qs.get('max') || '60', 10);
-
+    const pdfParam = qs.get('pdf'); // e.g. menus/mondo.pdf (RELATIVE)
     const container = document.getElementById('flipbook');
     const statusEl = document.getElementById('status');
     const helpEl = document.getElementById('help');
     const openPdfEl = document.getElementById('openPdf');
 
+    // Flipbook sizing
     function measure(){
       return {
         w: Math.max(600, Math.floor(Math.min(window.innerWidth-40, 1100)*0.9)),
@@ -89,15 +84,16 @@
 
     async function renderPDFtoImages(url){
       const pdfjsLib = window['pdfjsLib'];
-      // Worker must match the version above
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+      // FORCE no-worker mode (prevents cross-origin worker issues on Pages)
+      pdfjsLib.disableWorker = true;
+
       statusEl.textContent = 'Loading PDF…';
-      const doc = await pdfjsLib.getDocument(url).promise;
+      const doc = await pdfjsLib.getDocument({ url }).promise;
       const pages = [];
       for (let i=1;i<=doc.numPages;i++){
         const page = await doc.getPage(i);
         const viewport = page.getViewport({ scale: 1 });
-        const targetWidth = 1400;
+        const targetWidth = 1400; // crisp text on retina
         const scale = targetWidth / viewport.width;
         const v = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
@@ -112,45 +108,26 @@
       return pages;
     }
 
-    async function loadImages(base, ext){
-      statusEl.textContent = 'Loading images…';
-      const pages = [];
-      let hadOne = false;
-      for (let i=1;i<=maxProbe;i++){
-        const url = `${base}${i}.${ext}`;
-        const ok = await new Promise(res=>{ const img=new Image(); img.onload=()=>res(true); img.onerror=()=>res(false); img.src=url+`?v=${Date.now()}`; });
-        if (ok){
-          const el = document.createElement('div'); el.className='page';
-          el.innerHTML = `<img alt="Page ${i}" src="${url}" loading="lazy">`;
-          pages.push(el); hadOne=true;
-        } else if (hadOne) { break; }
-      }
-      if (!pages.length) throw new Error('No numbered images found.');
-      return pages;
-    }
-
     (async function(){
       try {
-        if (pdfParam){
-          helpEl.style.display = 'none';
-          openPdfEl.style.display = '';
-          openPdfEl.href = pdfParam;
-          const els = await renderPDFtoImages(pdfParam);
-          pageFlip.loadFromHTML(els);
-          statusEl.textContent = '';
+        if (!pdfParam){
+          statusEl.innerHTML = 'Add <code>?pdf=menus/your.pdf</code> to the URL.';
           return;
         }
-        if (baseParam){
-          helpEl.style.display = 'none';
-          const els = await loadImages(baseParam.endsWith('/')?baseParam:baseParam+'/', extParam);
-          pageFlip.loadFromHTML(els);
-          statusEl.textContent = '';
-          return;
-        }
-        statusEl.innerHTML = 'Add <code>?pdf=menus/your.pdf</code> or <code>?base=menus/folder/&ext=jpg</code> to the URL.';
+        helpEl.style.display = 'none';
+        openPdfEl.style.display = '';
+        openPdfEl.href = pdfParam;
+
+        // Verify the PDF exists before trying to render (better error messages)
+        const head = await fetch(pdfParam, { method:'HEAD', cache:'no-store' });
+        if (!head.ok) throw new Error('PDF not found at ' + pdfParam + ' (HTTP ' + head.status + ')');
+
+        const els = await renderPDFtoImages(pdfParam);
+        pageFlip.loadFromHTML(els);
+        statusEl.textContent = '';
       } catch (e){
         console.error(e);
-        statusEl.textContent = 'Could not load content. Check your path (relative), filenames (case), and try again.';
+        statusEl.textContent = 'Could not load. Check the path (relative), filename (case), and try again.';
       }
     })();
   })();
