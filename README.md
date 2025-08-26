@@ -1,4 +1,4 @@
-
+ 
 # Menu Flipbook (100% Free Hosting)
 
 This folder is a drop-in starter to host your PDF **flipbooks for free** on any static host (GitHub Pages, Cloudflare Pages, Netlify Free).
