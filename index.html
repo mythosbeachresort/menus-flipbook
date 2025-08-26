@@ -3,154 +3,154 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Menu Flipbook</title>
+  <title>Flipbook – PDF or Images (GitHub Pages Safe)</title>
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/page-flip/dist/css/page-flip.min.css" />
   <style>
-    :root { --bg: #0b0c10; --fg: #f6f7f8; --muted:#9aa6b2; --accent:#57c4e5; }
-    html,body { height:100%; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; background: var(--bg); color: var(--fg); }
-    .wrap { display:flex; flex-direction:column; min-height:100%; }
-    header { padding: 12px 16px; display:flex; align-items:center; gap:12px; border-bottom: 1px solid rgba(255,255,255,.08); }
-    header h1 { font-size: 16px; margin:0; font-weight:600; letter-spacing:.3px; }
-    .controls { display:flex; gap:8px; margin-left:auto; }
-    .btn { appearance:none; border:1px solid rgba(255,255,255,.16); background:#14161a; color:var(--fg); padding:8px 10px; border-radius:12px; cursor:pointer; font:inherit; line-height:1; }
-    .btn:hover { border-color: rgba(255,255,255,.28); }
-    .btn:active { transform: translateY(1px); }
-    .status { margin-left: 8px; color: var(--muted); font-size: 12px; }
-    .canvas-area { flex:1; min-height:0; display:grid; place-items:center; padding: 16px; }
-    #flipbook { width:min(100%, 1100px); height: calc(100vh - 90px); max-height: 1200px; background: #0f1115; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06); overflow:hidden; }
-    .page { background: #fff; }
-    .page img { display:block; width:100%; height:100%; object-fit: contain; background:#fff; }
-    footer { padding:10px 16px; color: var(--muted); font-size: 12px; text-align:center; }
-    .hidden { display:none !important; }
-    .loader { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.25); border-top-color: var(--accent); border-radius:50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    :root { --bg:#0b0c10; --card:#0f1115; --fg:#f6f7f8; --muted:#9aa6b2; --accent:#57c4e5; }
+    html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--fg)}
+    .wrap{display:flex;flex-direction:column;min-height:100%}
+    header{padding:12px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid rgba(255,255,255,.08)}
+    h1{margin:0;font-size:16px}
+    .status{color:var(--muted);font-size:12px;margin-left:6px}
+    .controls{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+    .btn{border:1px solid rgba(255,255,255,.16);background:#14161a;color:var(--fg);padding:8px 12px;border-radius:12px;cursor:pointer}
+    main{flex:1;display:grid;place-items:center;padding:16px}
+    #flipbook{width:min(100%,1100px);height:calc(100vh - 120px);background:var(--card);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.06);overflow:hidden}
+    .page{background:#fff}
+    .page img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
+    .help{max-width:960px;margin:32px auto;color:var(--muted);font-size:14px;line-height:1.55}
+    code{background:#121418;padding:2px 6px;border-radius:6px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Menu Flipbook</h1>
-      <span class="status" id="status"><span class="loader"></span> Loading…</span>
+      <h1>Flipbook</h1>
+      <span class="status" id="status">Tip: pass <code>?pdf=menus/dinner.pdf</code> or <code>?base=menus/dinner/&ext=jpg</code></span>
       <div class="controls">
         <button class="btn" id="prev">◀ Prev</button>
         <button class="btn" id="next">Next ▶</button>
         <button class="btn" id="zoom">Zoom</button>
         <button class="btn" id="fs">Full screen</button>
-        <a id="openPdf" class="btn" target="_blank" rel="noopener">Open PDF</a>
+        <a id="openPdf" class="btn" target="_blank" rel="noopener" style="display:none">Open PDF</a>
       </div>
     </header>
-    <main class="canvas-area">
-      <!-- Set your PDF URL with data-pdf or via ?pdf=... query param -->
-      <div id="flipbook" data-pdf="/menus/sample.pdf"></div>
+    <main>
+      <div id="flipbook"></div>
     </main>
-    <footer>
-      If the flipbook is slow on mobile, export images from your PDF and use lower page resolutions. 
-    </footer>
+    <div class="help" id="help">
+      <p><strong>How to use (GitHub Pages safe)</strong></p>
+      <ol>
+        <li>Upload your PDFs to <code>menus/</code> (e.g., <code>menus/dinner.pdf</code>), then open:<br>
+          <code>index.html?pdf=menus/dinner.pdf</code>
+        </li>
+        <li>Or export images named <code>1.jpg</code>, <code>2.jpg</code>, … into <code>menus/dinner/</code>, then open:<br>
+          <code>index.html?base=menus/dinner/&ext=jpg</code>
+        </li>
+      </ol>
+      <p><em>Important:</em> Use <strong>relative paths</strong> like <code>menus/dinner.pdf</code> (no leading slash).</p>
+    </div>
   </div>
 
   <!-- Flipbook library -->
   <script src="https://unpkg.com/page-flip/dist/js/page-flip.browser.min.js"></script>
-  <!-- PDF.js (no worker needed if using modern build) -->
+  <!-- PDF.js pinned to a Pages-friendly version -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script>
   (function(){
+    const qs = new URLSearchParams(location.search);
+    const pdfParam = qs.get('pdf');               // e.g. menus/dinner.pdf (relative)
+    const baseParam = qs.get('base');             // e.g. menus/dinner/   (must end with /)
+    const extParam = (qs.get('ext') || 'jpg').replace('.', '');
+    const maxProbe = parseInt(qs.get('max') || '60', 10);
+
     const container = document.getElementById('flipbook');
     const statusEl = document.getElementById('status');
+    const helpEl = document.getElementById('help');
     const openPdfEl = document.getElementById('openPdf');
 
-    // Resolve PDF URL: ?pdf=... overrides data-pdf
-    const urlParams = new URLSearchParams(window.location.search);
-    const pdfUrl = urlParams.get('pdf') || container.dataset.pdf;
-    if (!pdfUrl) {
-      statusEl.textContent = 'No PDF provided. Set data-pdf or ?pdf=';
-      return;
+    function measure(){
+      return {
+        w: Math.max(600, Math.floor(Math.min(window.innerWidth-40, 1100)*0.9)),
+        h: Math.max(700, Math.floor(Math.min(window.innerHeight-160, 1200)*0.9))
+      };
     }
-    openPdfEl.href = pdfUrl;
-
-    // Sensible target size (flipbook expects fixed width/height). We'll adapt to viewport.
-    function measureSize(){
-      const maxW = Math.min(window.innerWidth - 40, 1100);
-      const maxH = Math.min(window.innerHeight - 140, 1200);
-      const width = Math.floor(maxW);
-      const height = Math.floor(maxH);
-      return { width, height };
-    }
-
-    // Initialize flipbook
-    const { width, height } = measureSize();
-    const pageFlip = new St.PageFlip(container, {
-      width: Math.max(600, Math.floor(width*0.9)),
-      height: Math.max(700, Math.floor(height*0.9)),
-      size: 'stretch',
-      maxShadowOpacity: 0.3,
-      showCover: true,
-      mobileScrollSupport: true,
-      usePortrait: true,
-    });
-
-    window.addEventListener('resize', () => {
-      const s = measureSize();
-      try { pageFlip.update({ width: Math.max(500, Math.floor(s.width*0.9)), height: Math.max(600, Math.floor(s.height*0.9)) }); } catch(e) {}
-    });
+    const s = measure();
+    const pageFlip = new St.PageFlip(container, { width:s.w, height:s.h, size:'stretch', showCover:true, usePortrait:true, mobileScrollSupport:true, maxShadowOpacity:0.3 });
+    window.addEventListener('resize', ()=>{ const s = measure(); try{ pageFlip.update({ width:s.w, height:s.h }); }catch(e){} });
 
     // Controls
-    document.getElementById('prev').addEventListener('click', () => pageFlip.flipPrev());
-    document.getElementById('next').addEventListener('click', () => pageFlip.flipNext());
+    document.getElementById('prev').addEventListener('click', ()=>pageFlip.flipPrev());
+    document.getElementById('next').addEventListener('click', ()=>pageFlip.flipNext());
+    let zoomed=false; document.getElementById('zoom').addEventListener('click', ()=>{ zoomed=!zoomed; container.style.transformOrigin='center'; container.style.transform = zoomed?'scale(1.25)':'scale(1)'; });
+    document.getElementById('fs').addEventListener('click', async ()=>{ if (!document.fullscreenElement) { await container.requestFullscreen().catch(()=>{}); } else { await document.exitFullscreen(); } });
 
-    const zoomBtn = document.getElementById('zoom');
-    let zoomed = false;
-    zoomBtn.addEventListener('click', () => {
-      zoomed = !zoomed;
-      container.style.transformOrigin = 'center';
-      container.style.transform = zoomed ? 'scale(1.25)' : 'scale(1)';
-    });
-
-    document.getElementById('fs').addEventListener('click', async () => {
-      if (!document.fullscreenElement) {
-        await container.requestFullscreen().catch(()=>{});
-      } else {
-        await document.exitFullscreen();
-      }
-    });
-
-    // PDF.js setup
-    const pdfjsLib = window['pdfjsLib'];
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-    async function renderPDFtoImages(url) {
-      const pdf = await pdfjsLib.getDocument(url).promise;
+    async function renderPDFtoImages(url){
+      const pdfjsLib = window['pdfjsLib'];
+      // Worker must match the version above
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+      statusEl.textContent = 'Loading PDF…';
+      const doc = await pdfjsLib.getDocument(url).promise;
       const pages = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
+      for (let i=1;i<=doc.numPages;i++){
+        const page = await doc.getPage(i);
         const viewport = page.getViewport({ scale: 1 });
         const targetWidth = 1400;
         const scale = targetWidth / viewport.width;
         const v = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: false });
-        canvas.width = Math.floor(v.width);
-        canvas.height = Math.floor(v.height);
+        const ctx = canvas.getContext('2d');
+        canvas.width = Math.floor(v.width); canvas.height = Math.floor(v.height);
         await page.render({ canvasContext: ctx, viewport: v, intent: 'print' }).promise;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         const el = document.createElement('div');
         el.className = 'page';
-        el.innerHTML = `<img alt="Page ${i}" src="${dataUrl}" loading="lazy">`;
+        el.innerHTML = `<img alt="Page ${i}" src="${canvas.toDataURL('image/jpeg',0.92)}" loading="lazy">`;
         pages.push(el);
       }
       return pages;
     }
 
+    async function loadImages(base, ext){
+      statusEl.textContent = 'Loading images…';
+      const pages = [];
+      let hadOne = false;
+      for (let i=1;i<=maxProbe;i++){
+        const url = `${base}${i}.${ext}`;
+        const ok = await new Promise(res=>{ const img=new Image(); img.onload=()=>res(true); img.onerror=()=>res(false); img.src=url+`?v=${Date.now()}`; });
+        if (ok){
+          const el = document.createElement('div'); el.className='page';
+          el.innerHTML = `<img alt="Page ${i}" src="${url}" loading="lazy">`;
+          pages.push(el); hadOne=true;
+        } else if (hadOne) { break; }
+      }
+      if (!pages.length) throw new Error('No numbered images found.');
+      return pages;
+    }
+
     (async function(){
       try {
-        const pageEls = await renderPDFtoImages(pdfUrl);
-        pageFlip.loadFromHTML(pageEls);
-        statusEl.textContent = '';
-        statusEl.classList.add('hidden');
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = 'Could not load PDF. Check the URL or CORS settings.';
+        if (pdfParam){
+          helpEl.style.display = 'none';
+          openPdfEl.style.display = '';
+          openPdfEl.href = pdfParam;
+          const els = await renderPDFtoImages(pdfParam);
+          pageFlip.loadFromHTML(els);
+          statusEl.textContent = '';
+          return;
+        }
+        if (baseParam){
+          helpEl.style.display = 'none';
+          const els = await loadImages(baseParam.endsWith('/')?baseParam:baseParam+'/', extParam);
+          pageFlip.loadFromHTML(els);
+          statusEl.textContent = '';
+          return;
+        }
+        statusEl.innerHTML = 'Add <code>?pdf=menus/your.pdf</code> or <code>?base=menus/folder/&ext=jpg</code> to the URL.';
+      } catch (e){
+        console.error(e);
+        statusEl.textContent = 'Could not load content. Check your path (relative), filenames (case), and try again.';
       }
     })();
   })();
